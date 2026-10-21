@@ -1,0 +1,84 @@
+{
+  "name": "cost-tracker",
+  "displayName": "Cost Tracker",
+  "userConfig": {
+    "show_cost_last_prompt": {
+      "type": "boolean",
+      "title": "Show last-prompt cost",
+      "description": "Show the cost of the most recent prompt in the status line.",
+      "default": true
+    },
+    "show_cost_session": {
+      "type": "boolean",
+      "title": "Show session cost",
+      "description": "Show accumulated session cost in the status line.",
+      "default": true
+    },
+    "show_tokens_last_prompt": {
+      "type": "boolean",
+      "title": "Show last-prompt tokens",
+      "description": "Show tokens used by the most recent prompt in the status line.",
+      "default": true
+    },
+    "show_tokens_session": {
+      "type": "boolean",
+      "title": "Show session tokens",
+      "description": "Show accumulated session tokens in the status line.",
+      "default": true
+    },
+    "create_session_report": {
+      "type": "boolean",
+      "title": "Create session reports",
+      "description": "Create or update a report document for each session.",
+      "default": false
+    },
+    "include_cache_tokens": {
+      "type": "boolean",
+      "title": "Include cache tokens",
+      "description": "Include cache creation and read tokens in token totals.",
+      "default": false
+    },
+    "token_format": {
+      "type": "string",
+      "title": "Token format",
+      "description": "Choose compact or full token counts.",
+      "options": ["compact", "full"],
+      "default": "compact"
+    },
+    "cost_decimals": {
+      "type": "number",
+      "title": "Cost decimal places",
+      "description": "Number of decimal places to show for dollar amounts.",
+      "min": 0,
+      "max": 10,
+      "default": 4
+    },
+    "separator": {
+      "type": "string",
+      "title": "Status line separator",
+      "description": "Choose the separator between items in a status-line group.",
+      "options": ["·", "|", "/", "—"],
+      "default": "·"
+    },
+    "group_separator": {
+      "type": "string",
+      "title": "Status line group separator",
+      "description": "Choose the separator between prompt and session groups.",
+      "options": ["│", "|", "/"],
+      "default": "│"
+    },
+    "report_dir": {
+      "type": "string",
+      "title": "Session report folder",
+      "description": "Folder for reports. Relative paths are resolved from the project.",
+      "default": "~/.claude/session-reports"
+    },
+    "report_format": {
+      "type": "string",
+      "title": "Session report format",
+      "description": "Choose Markdown or JSON reports.",
+      "options": ["markdown", "json"],
+      "default": "markdown"
+    }
+  }
+}

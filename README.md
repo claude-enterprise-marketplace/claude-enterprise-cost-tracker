@@ -7,10 +7,32 @@ Status line, shown below the prompt:
 Optional per-session report (date, repository, branch, requests sent to Claude, total cost, total tokens).
 
 ## Install
-Local test:  `claude --plugin-dir ./cost-tracker`
-Enterprise:  host in a git repo with `.claude-plugin/marketplace.json`, then
-`/plugin marketplace add tcorral` and `/plugin install cost-tracker@tcorral`.
-Windows: replace `python3` with `python` in `settings.json` and `hooks/hooks.json`.
+The plugin requires Claude Code 2.1.271 or later and Python 3.
+
+### Run from a local checkout
+
+From the root of this repository, start Claude Code with the plugin enabled:
+
+    claude --plugin-dir .
+
+### Install from the enterprise marketplace
+
+In Claude Code, add the enterprise marketplace and install the plugin:
+
+    /plugin marketplace add claude-enterprise-marketplace/claude-plugins
+    /plugin install cost-tracker@claude-enterprise-marketplace
+
+When you enable the plugin, Claude Code prompts you to configure it. Choose:
+
+- Toggle last-prompt and session cost/token counts independently.
+- Toggle session reports and whether cache tokens count toward totals.
+- Pick compact or full token counts, and Markdown or JSON reports.
+- Choose cost decimal places and status-line separators.
+- Set the folder for session reports.
+
+These selections provide defaults; settings changed later with `/cost-tracker:config` or in configuration files take precedence.
+
+On Windows, replace `python3` with `python` in `settings.json` and `hooks/hooks.json`.
 
 ## Configuration
 Change with `/cost-tracker:config` or edit the JSON files directly.
@@ -35,7 +57,7 @@ Change with `/cost-tracker:config` or edit the JSON files directly.
 | report_dir | ~/.claude/session-reports | report folder (relative = project) |
 | report_format | markdown | `markdown` or `json` |
 
-Priority (low to high): defaults < `~/.claude/cost-tracker/config.json` < `<project>/.claude/cost-tracker.json` < env var `CLAUDE_COST_TRACKER_<KEY>` (e.g. `CLAUDE_COST_TRACKER_CREATE_SESSION_REPORT=true`; admins can set these through the `env` block of managed settings).
+Priority (low to high): defaults < plugin install selections < `~/.claude/cost-tracker/config.json` < `<project>/.claude/cost-tracker.json` < env var `CLAUDE_COST_TRACKER_<KEY>` (e.g. `CLAUDE_COST_TRACKER_CREATE_SESSION_REPORT=true`; admins can set these through the `env` block of managed settings).
 
 ## How numbers are computed
 - Cost: `cost.total_cost_usd` from Claude Code (client-side estimate). Last prompt = current total minus the total at the moment the prompt was submitted (UserPromptSubmit hook).

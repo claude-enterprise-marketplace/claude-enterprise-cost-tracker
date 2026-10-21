@@ -10,7 +10,13 @@ from pathlib import Path
 
 HOME_DIR = Path.home() / ".claude" / "cost-tracker"
 USER_CONFIG = HOME_DIR / "config.json"
+PLUGIN_CONFIG = HOME_DIR / "plugin-config.json"
 ENV_PREFIX = "CLAUDE_COST_TRACKER_"
+PLUGIN_OPTION_PREFIX = "CLAUDE_PLUGIN_OPTION_"
+PLUGIN_SEPARATOR_OPTIONS = {
+    "separator": {"·": " · ", "|": " | ", "/": " / ", "—": " — "},
+    "group_separator": {"│": "  │  ", "|": " | ", "/": " / "},
+}
 
 # key -> (default, description). Type is taken from the default; "choices" below.
 SETTINGS = {
@@ -85,10 +91,27 @@ def project_config_path(project_dir):
     return Path(project_dir) / ".claude" / "cost-tracker.json"
 
 
+def sync_plugin_options():
+    """Persist Claude Code's install-time plugin options for the status-line process."""
+    cfg = read_json(PLUGIN_CONFIG)
+    changed = False
+    for key in DEFAULTS:
+        value = os.environ.get(PLUGIN_OPTION_PREFIX + key.upper())
+        if value is None:
+            continue
+        value = PLUGIN_SEPARATOR_OPTIONS.get(key, {}).get(value, value)
+        value = coerce(value, key)
+        if cfg.get(key) != value:
+            cfg[key] = value
+            changed = True
+    if changed:
+        write_json(PLUGIN_CONFIG, cfg)
+
+
 def load_config_with_sources(project_dir=None):
-    """Priority (low -> high): defaults < user file < project file < env vars."""
+    """Priority (low -> high): defaults < plugin options < user < project < env."""
     cfg, src = dict(DEFAULTS), {k: "default" for k in DEFAULTS}
-    layers = [("user", USER_CONFIG)]
+    layers = [("plugin", PLUGIN_CONFIG), ("user", USER_CONFIG)]
     if project_dir:
         layers.append(("project", project_config_path(project_dir)))
     for name, path in layers:

@@ -19,6 +19,7 @@ def main():
     sid = data.get("session_id") or "unknown"
     event = data.get("hook_event_name") or ""
     proj = ct.project_dir_of(data)
+    ct.sync_plugin_options()
     cfg = ct.load_config(proj)
 
     if event == "UserPromptSubmit":
