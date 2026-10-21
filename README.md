@@ -22,15 +22,16 @@ In Claude Code, add the enterprise marketplace and install the plugin:
     /plugin marketplace add claude-enterprise-marketplace/claude-plugins
     /plugin install cost-tracker@claude-enterprise-marketplace
 
-When you enable the plugin, Claude Code prompts you to configure it. Choose:
+When you enable the plugin, Claude Code prompts you to configure it. By default, **Use Cost Tracker as your status line** is enabled. The plugin applies this choice to your user settings at session start and before your first prompt:
 
+- Configure Claude Code's main status line to run Cost Tracker. If another user-level status line is configured, the plugin saves it and replaces it; turning this option off while the plugin is active restores the saved setting.
 - Toggle last-prompt and session cost/token counts independently.
 - Toggle session reports and whether cache tokens count toward totals.
 - Pick compact or full token counts, and Markdown or JSON reports.
 - Choose cost decimal places and status-line separators.
 - Set the folder for session reports.
 
-These selections provide defaults; settings changed later with `/cost-tracker:config` or in configuration files take precedence.
+The display and report selections provide defaults; settings changed later with `/cost-tracker:config` or in configuration files take precedence. The status-line choice updates Claude Code's user-level main status-line setting; a project-level `statusLine` setting may override it. If you install or reconfigure the plugin in an already-running session, start a new Claude Code session to apply the change. Before uninstalling, turn the option off and start a session so the previous status-line setting is restored.
 
 On Windows, replace `python3` with `python` in `settings.json` and `hooks/hooks.json`.
 
@@ -65,5 +66,5 @@ Priority (low to high): defaults < plugin install selections < `~/.claude/cost-t
 - Report: one file per session, updated in place on every status refresh and on Stop/SessionEnd.
 
 ## Known limits
-- If the user already has their own `statusLine` in settings, it wins over the plugin's. The report cost then stays at 0/n.a. because only the status line receives cost data.
+- Claude Code supports one main `statusLine` command. Leave **Use Cost Tracker as your status line** off to keep another status line; enabling it replaces the user-level command and saves it for restoration if you later turn the option off while the plugin remains active. A project-level status line can still take precedence.
 - Subagent usage is included only if Claude Code writes it to the main transcript.

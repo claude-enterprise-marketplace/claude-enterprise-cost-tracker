@@ -2,6 +2,7 @@
 import json
 import os
 import re
+import shlex
 import subprocess
 import tempfile
 import time
@@ -11,6 +12,7 @@ from pathlib import Path
 HOME_DIR = Path.home() / ".claude" / "cost-tracker"
 USER_CONFIG = HOME_DIR / "config.json"
 PLUGIN_CONFIG = HOME_DIR / "plugin-config.json"
+STATUS_LINE_STATE = HOME_DIR / "statusline-state.json"
 ENV_PREFIX = "CLAUDE_COST_TRACKER_"
 PLUGIN_OPTION_PREFIX = "CLAUDE_PLUGIN_OPTION_"
 PLUGIN_SEPARATOR_OPTIONS = {
@@ -106,6 +108,78 @@ def sync_plugin_options():
             changed = True
     if changed:
         write_json(PLUGIN_CONFIG, cfg)
+
+
+def sync_status_line(enabled, plugin_root, python_executable):
+    """Apply or restore the main Claude Code status line in user settings."""
+    settings_path = Path.home() / ".claude" / "settings.json"
+
+    if settings_path.exists():
+        settings = json.loads(settings_path.read_text(encoding="utf-8"))
+        if not isinstance(settings, dict):
+            raise ValueError(f"{settings_path} must contain a JSON object")
+    else:
+        settings = {}
+
+    state = read_json(STATUS_LINE_STATE) if STATUS_LINE_STATE.exists() else None
+    if state is not None and not isinstance(state, dict):
+        raise ValueError(f"{STATUS_LINE_STATE} must contain a JSON object")
+    if state is not None and not {
+        "original_present", "original", "managed"
+    }.issubset(state):
+        raise ValueError(f"{STATUS_LINE_STATE} is missing required fields")
+    if state is not None and (
+        not isinstance(state["original_present"], bool)
+        or not isinstance(state["managed"], dict)
+    ):
+        raise ValueError(f"{STATUS_LINE_STATE} contains invalid fields")
+
+    if not enabled:
+        if state is None:
+            return
+        if settings.get("statusLine") == state.get("managed"):
+            if state.get("original_present"):
+                settings["statusLine"] = state["original"]
+            else:
+                settings.pop("statusLine", None)
+            write_json(settings_path, settings)
+        STATUS_LINE_STATE.unlink(missing_ok=True)
+        return
+
+    root = Path(plugin_root).resolve()
+    script = root / "scripts" / "statusline.py"
+    if not script.is_file():
+        raise FileNotFoundError(f"Cost Tracker status-line script not found: {script}")
+    command_parts = [str(python_executable), str(script)]
+    command = (subprocess.list2cmdline(command_parts) if os.name == "nt"
+               else shlex.join(command_parts))
+    managed = {"type": "command", "command": command}
+
+    if state is not None:
+        if settings.get("statusLine") != state.get("managed"):
+            original_matches = (
+                ("statusLine" in settings) == state["original_present"]
+                and (
+                    not state["original_present"]
+                    or settings.get("statusLine") == state["original"]
+                )
+            )
+            if not original_matches:
+                STATUS_LINE_STATE.unlink(missing_ok=True)
+                return
+        if settings.get("statusLine") == managed:
+            return
+        state["managed"] = managed
+    else:
+        state = {
+            "original_present": "statusLine" in settings,
+            "original": settings.get("statusLine"),
+            "managed": managed,
+        }
+
+    write_json(STATUS_LINE_STATE, state)
+    settings["statusLine"] = managed
+    write_json(settings_path, settings)
 
 
 def load_config_with_sources(project_dir=None):

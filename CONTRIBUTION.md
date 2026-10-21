@@ -19,9 +19,10 @@ The main implementation is in `scripts/`; `hooks/hooks.json` registers the hooks
 
 ## Validation
 
-There is no dedicated automated test suite at present. Run checks appropriate to your change:
+Run checks appropriate to your change:
 
-- For Python changes, run `python3 -m py_compile scripts/*.py`.
+- Run the automated tests with `python3 -m unittest discover -s tests -v`.
+- For Python changes, run `python3 -m py_compile scripts/*.py tests/*.py`.
 - For changes to JSON files, validate each changed file with `python3 -m json.tool <file>`.
 - For plugin behavior, follow the local test instructions in the README and try the affected feature in Claude Code.
 - For configuration changes, check both the default and override behavior, including project and environment settings where applicable.

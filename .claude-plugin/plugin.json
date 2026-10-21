@@ -2,6 +2,12 @@
   "name": "cost-tracker",
   "displayName": "Cost Tracker",
   "userConfig": {
+    "configure_status_line": {
+      "type": "boolean",
+      "title": "Use Cost Tracker as your status line",
+      "description": "Automatically configure Claude Code's main status line. If another status line is set, it will be saved and replaced; turning this option off restores it.",
+      "default": true
+    },
     "show_cost_last_prompt": {
       "type": "boolean",
       "title": "Show last-prompt cost",
