@@ -33,7 +33,7 @@ When you enable the plugin, Claude Code prompts you to configure it. By default,
 
 The display and report selections provide defaults; settings changed later with `/cost-tracker:config` or in configuration files take precedence. The status-line choice updates Claude Code's user-level main status-line setting; a project-level `statusLine` setting may override it. If you install or reconfigure the plugin in an already-running session, start a new Claude Code session to apply the change. Before uninstalling, turn the option off and start a session so the previous status-line setting is restored.
 
-On Windows, replace `python3` with `python` in `settings.json` and `hooks/hooks.json`.
+On Windows, replace `python3` with `python` in `hooks/hooks.json`.
 
 ## Configuration
 Change with `/cost-tracker:config` or edit the JSON files directly.
