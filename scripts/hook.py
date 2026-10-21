@@ -6,6 +6,7 @@ Stop / SessionEnd -> write the final session report (if enabled).
 """
 import json
 import os
+import subprocess
 import sys
 
 sys.path.insert(0, __import__("os").path.dirname(__file__))
@@ -47,6 +48,12 @@ def main():
         ct.update_state(sid, upd)
     elif event in ("Stop", "SessionEnd") and cfg["create_session_report"]:
         tx = ct.update_usage(sid, data.get("transcript_path"))
+        if event == "SessionEnd" and cfg["generate_session_summary"]:
+            try:
+                tx["summary"] = ct.generate_session_summary(data.get("transcript_path"))
+                ct.write_json(ct.HOME_DIR / f"{sid}.tx.json", tx)
+            except (OSError, RuntimeError, ValueError, subprocess.TimeoutExpired) as exc:
+                print(f"Cost Tracker: {exc}", file=sys.stderr)
         cost = float(ct.read_json(ct.state_path(sid)).get("last_total", 0.0))
         ct.write_report(cfg, sid, data.get("cwd") or proj, tx, cost, force=True)
 

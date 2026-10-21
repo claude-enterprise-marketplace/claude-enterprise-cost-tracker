@@ -38,6 +38,12 @@
       "description": "Create or update a report document for each session.",
       "default": false
     },
+    "generate_session_summary": {
+      "type": "boolean",
+      "title": "Generate report summary with Claude",
+      "description": "Make an additional Claude request at session end to summarize your prompts in 30 words or fewer. Requires session reports.",
+      "default": false
+    },
     "include_cache_tokens": {
       "type": "boolean",
       "title": "Include cache tokens",

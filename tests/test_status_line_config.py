@@ -3,6 +3,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
@@ -90,8 +91,8 @@ class SessionSummaryTests(unittest.TestCase):
         with self.transcript.open("a", encoding="utf-8") as stream:
             stream.write(json.dumps(entry) + "\n")
 
-    def test_report_includes_summary_capped_to_30_words(self):
-        prompt = " ".join(f"word{i}" for i in range(35))
+    def test_report_includes_model_summary_in_both_formats(self):
+        prompt = "We updated the plugin to generate a concise session summary."
         self.append_entry({"type": "user", "message": {"content": prompt}})
         self.append_entry({
             "type": "assistant",
@@ -108,7 +109,7 @@ class SessionSummaryTests(unittest.TestCase):
         })
 
         tx = ctlib.update_usage("session-1", str(self.transcript))
-        self.assertEqual(tx["summary"], " ".join(f"word{i}" for i in range(30)))
+        tx["summary"] = "Summarized plugin improvements and report generation."
 
         for report_format in ("markdown", "json"):
             cfg = dict(ctlib.DEFAULTS)
@@ -128,13 +129,41 @@ class SessionSummaryTests(unittest.TestCase):
                 report = Path(report_path).read_text(encoding="utf-8")
                 self.assertIn(f"| Summary | {tx['summary']} |", report)
 
-    def test_skips_greeting_and_uses_first_substantive_prompt(self):
+    def test_prompt_context_excludes_slash_commands(self):
         self.append_entry({"type": "user", "message": {"content": "Hi!"}})
+        self.append_entry({
+            "type": "user",
+            "message": {"content": "<command-message>cost-tracker:config</command-message>"},
+        })
         self.append_entry({"type": "user", "message": {"content": "Add a report summary please"}})
 
-        tx = ctlib.update_usage("session-2", str(self.transcript))
+        prompts = ctlib.session_prompt_context(str(self.transcript))
 
-        self.assertEqual(tx["summary"], "Add a report summary please")
+        self.assertEqual(prompts, ["Hi!", "Add a report summary please"])
+
+    def test_model_summary_is_capped_and_nested_hooks_are_disabled(self):
+        prompt = " ".join(f"word{i}" for i in range(35))
+        self.append_entry({"type": "user", "message": {"content": prompt}})
+        output = " ".join(f"summary{i}" for i in range(35))
+        with patch.object(ctlib.shutil, "which", return_value="/usr/bin/claude"), \
+                patch.object(ctlib.subprocess, "run", return_value=SimpleNamespace(
+                    returncode=0, stdout=output, stderr=""
+                )) as run:
+            with patch.dict("os.environ", {"CLAUDECODE": "1"}):
+                summary = ctlib.generate_session_summary(str(self.transcript))
+
+        self.assertEqual(summary, " ".join(f"summary{i}" for i in range(30)))
+        args = run.call_args.args[0]
+        self.assertIn("--no-session-persistence", args)
+        self.assertIn("--disable-slash-commands", args)
+        self.assertIn('{"disableAllHooks":true}', args)
+        self.assertNotIn("CLAUDECODE", run.call_args.kwargs["env"])
+        self.assertIn(json.dumps([prompt]), run.call_args.kwargs["input"])
+
+    def test_summary_generation_requires_transcript_prompts(self):
+        with patch.object(ctlib.shutil, "which") as which:
+            self.assertEqual(ctlib.generate_session_summary(str(self.transcript)), "")
+        which.assert_not_called()
 
 
 if __name__ == "__main__":

@@ -26,7 +26,7 @@ When you enable the plugin, Claude Code prompts you to configure it. By default,
 
 - Configure Claude Code's main status line to run Cost Tracker. If another user-level status line is configured, the plugin saves it and replaces it; turning this option off while the plugin is active restores the saved setting.
 - Toggle last-prompt and session cost/token counts independently.
-- Toggle session reports and whether cache tokens count toward totals.
+- Toggle session reports, whether cache tokens count toward totals, and whether to generate a report summary with an additional Claude request.
 - Pick compact or full token counts, and Markdown or JSON reports.
 - Choose cost decimal places and status-line separators.
 - Set the folder for session reports.
@@ -41,7 +41,8 @@ Change with `/cost-tracker:config` or edit the JSON files directly.
     /cost-tracker:config                         show effective settings
     /cost-tracker:config keys                    list all settings
     /cost-tracker:config set show_cost_session false
-    /cost-tracker:config set create_session_report true --project
+    /cost-tracker:config set create_session_report true
+    /cost-tracker:config set generate_session_summary true
     /cost-tracker:config reset [key] [--project]
 
 | Setting | Default | Meaning |
@@ -51,6 +52,7 @@ Change with `/cost-tracker:config` or edit the JSON files directly.
 | show_tokens_last_prompt | true | tokens of the last prompt |
 | show_tokens_session | true | accumulated session tokens |
 | create_session_report | false | create/update the report document |
+| generate_session_summary | false | generate a summary of the session using an additional Claude request at session end; requires reports |
 | include_cache_tokens | false | count cache creation/read tokens in totals |
 | token_format | compact | `compact` (12.3k) or `full` (12,345) |
 | cost_decimals | 4 | decimals for dollar amounts |
@@ -63,7 +65,7 @@ Priority (low to high): defaults < plugin install selections < `~/.claude/cost-t
 ## How numbers are computed
 - Cost: `cost.total_cost_usd` from Claude Code (client-side estimate). Last prompt = current total minus the total at the moment the prompt was submitted (UserPromptSubmit hook).
 - Tokens and request count: read from the session transcript (one request = one API response, deduplicated). Last prompt = everything after your most recent prompt.
-- Report: one file per session, updated in place on every status refresh and on Stop/SessionEnd. Includes an extract of the first substantive user prompt (up to 30 words) as a local, no-model-call summary.
+- Report: one file per session, updated in place on every status refresh and on Stop/SessionEnd. If `generate_session_summary` is enabled, Claude summarizes the user's prompts at session end in 30 words or fewer. This makes an extra Claude request and sends bounded user-prompt text in that request; it is disabled by default.
 
 ## Known limits
 - Claude Code supports one main `statusLine` command. Leave **Use Cost Tracker as your status line** off to keep another status line; enabling it replaces the user-level command and saves it for restoration if you later turn the option off while the plugin remains active. A project-level status line can still take precedence.

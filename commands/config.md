@@ -1,5 +1,5 @@
 ---
-description: Show or change Cost Tracker settings (status line items, session report)
+description: Show or change Cost Tracker settings (status line, reports, summaries)
 argument-hint: [show | keys | get <key> | set <key> <value> [--project] | reset [key] [--project]]
 allowed-tools: Bash(python3:*)
 ---
