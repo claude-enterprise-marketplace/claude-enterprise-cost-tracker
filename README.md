@@ -63,7 +63,7 @@ Priority (low to high): defaults < plugin install selections < `~/.claude/cost-t
 ## How numbers are computed
 - Cost: `cost.total_cost_usd` from Claude Code (client-side estimate). Last prompt = current total minus the total at the moment the prompt was submitted (UserPromptSubmit hook).
 - Tokens and request count: read from the session transcript (one request = one API response, deduplicated). Last prompt = everything after your most recent prompt.
-- Report: one file per session, updated in place on every status refresh and on Stop/SessionEnd.
+- Report: one file per session, updated in place on every status refresh and on Stop/SessionEnd. Includes an extract of the first substantive user prompt (up to 30 words) as a local, no-model-call summary.
 
 ## Known limits
 - Claude Code supports one main `statusLine` command. Leave **Use Cost Tracker as your status line** off to keep another status line; enabling it replaces the user-level command and saves it for restoration if you later turn the option off while the plugin remains active. A project-level status line can still take precedence.

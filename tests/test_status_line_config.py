@@ -76,5 +76,66 @@ class SyncStatusLineTests(unittest.TestCase):
         self.assertFalse(self.state_path.exists())
 
 
+class SessionSummaryTests(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp_dir.cleanup)
+        self.home = Path(self.temp_dir.name)
+        self.home_patch = patch.object(ctlib, "HOME_DIR", self.home / ".claude" / "cost-tracker")
+        self.home_patch.start()
+        self.addCleanup(self.home_patch.stop)
+        self.transcript = self.home / "session.jsonl"
+
+    def append_entry(self, entry):
+        with self.transcript.open("a", encoding="utf-8") as stream:
+            stream.write(json.dumps(entry) + "\n")
+
+    def test_report_includes_summary_capped_to_30_words(self):
+        prompt = " ".join(f"word{i}" for i in range(35))
+        self.append_entry({"type": "user", "message": {"content": prompt}})
+        self.append_entry({
+            "type": "assistant",
+            "message": {
+                "id": "message-1",
+                "model": "test-model",
+                "usage": {
+                    "input_tokens": 10,
+                    "output_tokens": 5,
+                    "cache_creation_input_tokens": 0,
+                    "cache_read_input_tokens": 0,
+                },
+            },
+        })
+
+        tx = ctlib.update_usage("session-1", str(self.transcript))
+        self.assertEqual(tx["summary"], " ".join(f"word{i}" for i in range(30)))
+
+        for report_format in ("markdown", "json"):
+            cfg = dict(ctlib.DEFAULTS)
+            cfg.update(
+                create_session_report=True,
+                report_dir=str(self.home / "reports"),
+                report_format=report_format,
+            )
+            report_path = ctlib.write_report(
+                cfg, f"session-{report_format}", str(self.home), tx, 0.25, force=True
+            )
+            self.assertIsNotNone(report_path)
+            if report_format == "json":
+                report = json.loads(Path(report_path).read_text(encoding="utf-8"))
+                self.assertEqual(report["summary"], tx["summary"])
+            else:
+                report = Path(report_path).read_text(encoding="utf-8")
+                self.assertIn(f"| Summary | {tx['summary']} |", report)
+
+    def test_skips_greeting_and_uses_first_substantive_prompt(self):
+        self.append_entry({"type": "user", "message": {"content": "Hi!"}})
+        self.append_entry({"type": "user", "message": {"content": "Add a report summary please"}})
+
+        tx = ctlib.update_usage("session-2", str(self.transcript))
+
+        self.assertEqual(tx["summary"], "Add a report summary please")
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -1,4 +1,5 @@
 """Shared helpers for the cost-tracker plugin (standard library only)."""
+import html
 import json
 import os
 import re
@@ -248,6 +249,14 @@ def _text_of(content):
     return ""
 
 
+def _summary_from_prompt(text):
+    """Keep a short extract from the first substantive prompt, without storing the full text."""
+    words = re.sub(r"\s+", " ", text).strip().split()
+    if len(words) < 4:
+        return ""
+    return " ".join(words[:30])
+
+
 def is_prompt(entry):
     """True for a real user prompt (not tool results, meta or interrupts)."""
     if entry.get("isMeta") or entry.get("isSidechain"):
@@ -266,6 +275,21 @@ def is_prompt(entry):
     return False
 
 
+def _summary_from_transcript(transcript_path, limit):
+    with open(transcript_path, "rb") as transcript:
+        for line in transcript.read(limit).splitlines():
+            try:
+                entry = json.loads(line)
+            except (json.JSONDecodeError, UnicodeDecodeError):
+                continue
+            if entry.get("type") == "user" and is_prompt(entry):
+                content = (entry.get("message") or {}).get("content")
+                summary = _summary_from_prompt(_text_of(content))
+                if summary:
+                    return summary
+    return ""
+
+
 def update_usage(sid, transcript_path):
     """Incrementally aggregate token usage per API response from the transcript.
 
@@ -275,14 +299,19 @@ def update_usage(sid, transcript_path):
     path = HOME_DIR / f"{sid}.tx.json"
     tx = read_json(path)
     if not transcript_path or not os.path.exists(transcript_path):
-        return tx if tx else {"prompts": 0, "msgs": {}, "offset": 0}
+        return tx if tx else {"prompts": 0, "msgs": {}, "offset": 0, "summary": ""}
     size = os.path.getsize(transcript_path)
     off = tx.get("offset", 0)
     if size < off:  # file was rewritten (e.g. /clear, compaction): start over
         tx, off = {}, 0
     tx.setdefault("msgs", {})
     tx.setdefault("prompts", 0)
+    tx.setdefault("summary", "")
+    if not tx["summary"] and off:
+        tx["summary"] = _summary_from_transcript(transcript_path, off)
     if size == off:
+        if tx["summary"]:
+            write_json(path, tx)
         return tx
     with open(transcript_path, "rb") as fh:
         fh.seek(off)
@@ -300,6 +329,9 @@ def update_usage(sid, transcript_path):
         if kind == "user":
             if is_prompt(e):
                 tx["prompts"] += 1
+                if not tx["summary"]:
+                    content = (e.get("message") or {}).get("content")
+                    tx["summary"] = _summary_from_prompt(_text_of(content))
         elif kind == "assistant":
             m = e.get("message") or {}
             u = m.get("usage")
@@ -398,10 +430,12 @@ def _slug(s):
 def _render_markdown(r, include_cache):
     note = "input + output + cache tokens" if include_cache else "input + output tokens (cache excluded)"
     b = r["token_breakdown"]
+    summary = html.escape(r["summary"], quote=False).replace("|", "&#124;")
     return "\n".join([
         "# Claude Code session report", "",
         f"_Last updated: {r['updated']}_", "",
         "| Field | Value |", "|---|---|",
+        f"| Summary | {summary or 'Not available'} |",
         f"| Date | {r['date']} |",
         f"| Repository | {r['repository']} |",
         f"| Branch | {r['branch']} |",
@@ -427,7 +461,8 @@ def write_report(cfg, sid, cwd, tx, session_cost, force=False):
         return None
     inc = cfg["include_cache_tokens"]
     total_tokens = token_count(totals["session"], inc)
-    sig = [round(session_cost, 6), totals["requests"], total_tokens]
+    summary = tx.get("summary", "")
+    sig = [round(session_cost, 6), totals["requests"], total_tokens, summary]
     state = read_json(state_path(sid))
     if not force and state.get("report_sig") == sig and state.get("report_path"):
         return None
@@ -453,6 +488,7 @@ def write_report(cfg, sid, cwd, tx, session_cost, force=False):
         "date": started[:10],
         "started": started,
         "updated": now.isoformat(timespec="seconds"),
+        "summary": summary,
         "repository": git["repo"],
         "branch": git["branch"],
         "requests": totals["requests"],
